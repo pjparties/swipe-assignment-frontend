@@ -15,17 +15,19 @@ This repo extends the parent repo by adding the following features:
 - The ability to update the product prices based on the selected currency.
 
 ## How-to
-> [!TIP] To add Products
+> [!TIP]
+> **To add Products**
 > Click on the "Add Item" button to add a new item. Set Name, Quantity, and Price for the item.
 > The product will automatically be added to the invoice table as well as the storage for products. ie. Products tab.
 
-> [!TIP] To Edit Products
+> [!TIP]
+> **To Edit Products**
 > Products can be updated via both the Products tab and the Invoice tab.
 
-> [!IMPORTANT] Important
+> [!IMPORTANT]
 > The currency can be changed using the currency dropdown in the header. The items will be updated based on the selected currency.
 
-> [!WARNING] Warning
+> [!WARNING]
 > Deleting or updating an item will remove it from the invoice table as well as the storage for products. ie. Products tab.
 
 > [!NOTE]
