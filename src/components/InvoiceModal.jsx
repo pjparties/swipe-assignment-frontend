@@ -1,4 +1,5 @@
-import React from "react";
+
+import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
@@ -8,6 +9,11 @@ import Modal from "react-bootstrap/Modal";
 import { BiPaperPlane, BiCloudDownload } from "react-icons/bi";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { useSelector } from "react-redux";
+import { selectProductsList } from "../redux/productSlice";
+import { useCurrencyExchangeRates } from "../redux/hooks";
+import { newCurrencySymbol } from "../utils/newCurrencySymbol";
+import { convertPrice } from "../utils/currencyCoverter";
 
 const GenerateInvoice = () => {
   html2canvas(document.querySelector("#invoiceCapture")).then((canvas) => {
@@ -27,6 +33,50 @@ const GenerateInvoice = () => {
 };
 
 const InvoiceModal = (props) => {
+  const [taxAmount, setTaxAmount] = useState("0.00");
+  const [discountAmount, setDiscountAmount] = useState("0.00");
+  const [total, setTotal] = useState("0.00");
+  const { rates, current } = useCurrencyExchangeRates();
+
+  const selectedProducts = useSelector(selectProductsList);
+
+  const handleCalculateTotal = () => {
+    // Calculate subtotal
+    let subTotal = 0;
+    selectedProducts.forEach((item) => {
+      // Convert itemPrice and itemQuantity to numbers, handle empty fields by defaulting to 0
+      const price = parseFloat(item?.itemPrice || 0);
+      const quantity = parseInt(item?.itemQuantity || 0);
+      subTotal += price * quantity;
+    });
+
+    // Convert taxRate and discountRate to numbers, handle empty fields by defaulting to 0
+    const taxRate = parseFloat(props?.info?.taxRate || 0);
+    const discountRate = parseFloat(props?.info?.discountRate || 0);
+
+    const calculatedTaxAmount = parseFloat(
+      subTotal * (taxRate / 100)
+    ).toFixed(2);
+
+    const calculatedDiscountAmount = parseFloat(
+      subTotal * (discountRate / 100)
+    ).toFixed(2);
+
+    const calculatedTotal = (
+      subTotal -
+      parseFloat(calculatedDiscountAmount) +
+      parseFloat(calculatedTaxAmount)
+    ).toFixed(2);
+
+    setTaxAmount(calculatedTaxAmount);
+    setDiscountAmount(calculatedDiscountAmount);
+    setTotal(calculatedTotal);
+  };
+
+  useEffect(() => {
+    handleCalculateTotal();
+  },[selectedProducts]);
+
   return (
     <div>
       <Modal
@@ -51,8 +101,17 @@ const InvoiceModal = (props) => {
             <div className="text-end ms-4">
               <h6 className="fw-bold mt-1 mb-2">Amount&nbsp;Due:</h6>
               <h5 className="fw-bold text-secondary">
-                {" "}
-                {props.currency} {props.total}
+                {current === "INR" ? (
+                  <div>
+                    {newCurrencySymbol(current)}
+                    {props.total || 0}
+                  </div>
+                ) : (
+                  <div>
+                    {newCurrencySymbol(current)}
+                    {convertPrice(props.total || 0, current, rates)}
+                  </div>
+                )}
               </h5>
             </div>
           </div>
@@ -78,29 +137,57 @@ const InvoiceModal = (props) => {
             <Table className="mb-0">
               <thead>
                 <tr>
+                  <th>NAME</th>
+                  <th>DESC</th>
                   <th>QTY</th>
-                  <th>DESCRIPTION</th>
                   <th className="text-end">PRICE</th>
                   <th className="text-end">AMOUNT</th>
                 </tr>
-              </thead>
-              <tbody>
-                {props.items.map((item, i) => {
+                {/* display added items */}
+                {selectedProducts.map((item) => {
                   return (
-                    <tr id={i} key={i}>
-                      <td style={{ width: "70px" }}>{item.itemQuantity}</td>
-                      <td>
-                        {item.itemName} - {item.itemDescription}
+                    <tr key={item.itemId}>
+                      <td>{item.itemName}</td>
+                      <td>{item.itemDescription}</td>
+                      <td>{item.itemQuantity}</td>
+                      {/* price */}
+                      <td className="text-end">
+                        {current === "INR" ? (
+                          <div>
+                            {newCurrencySymbol(current)}
+                            {item.itemPrice}
+
+                          </div>
+                        ) : (
+                          <div>
+                            {newCurrencySymbol(current)}
+                            {convertPrice(item.itemPrice, current, rates)}
+                          </div>
+                        )}
                       </td>
-                      <td className="text-end" style={{ width: "100px" }}>
-                        {props.currency} {item.itemPrice}
-                      </td>
-                      <td className="text-end" style={{ width: "100px" }}>
-                        {props.currency} {item.itemPrice * item.itemQuantity}
+                      {/* amount */}
+                      <td className="text-end">
+                        {current === "INR" ? (
+                          <div>
+                            {newCurrencySymbol(current)}
+                            {item.itemPrice * item.itemQuantity}
+                          </div>
+                        ) : (
+                          <div>
+                            {newCurrencySymbol(current)}
+                            {convertPrice(
+                              item.itemPrice * item.itemQuantity,
+                              current,
+                              rates
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
                 })}
+              </thead>
+              <tbody>
               </tbody>
             </Table>
             <Table>
@@ -116,17 +203,41 @@ const InvoiceModal = (props) => {
                     TAX
                   </td>
                   <td className="text-end" style={{ width: "100px" }}>
-                    {props.currency} {props.taxAmmount}
+                    {current === "INR" ? (
+                      <div>
+                        {newCurrencySymbol(current)}
+                        {props.taxAmount || 0}
+                      </div>
+                    ) : (
+                      <div>
+                        {newCurrencySymbol(current)}
+                        {convertPrice(props.taxAmount || 0, current, rates)}
+                      </div>
+                    )}
                   </td>
                 </tr>
-                {props.discountAmmount !== 0.0 && (
+                {props.discountAmount !== 0.0 && (
                   <tr className="text-end">
                     <td></td>
                     <td className="fw-bold" style={{ width: "100px" }}>
                       DISCOUNT
                     </td>
                     <td className="text-end" style={{ width: "100px" }}>
-                      {props.currency} {props.discountAmmount}
+                      {current === "INR" ? (
+                        <div>
+                          {newCurrencySymbol(current)}
+                          {props.discountAmount || 0}
+                        </div>
+                      ) : (
+                        <div>
+                          {newCurrencySymbol(current)}
+                          {convertPrice(
+                            props.discountAmount || 0,
+                            current,
+                            rates
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )}
@@ -136,7 +247,17 @@ const InvoiceModal = (props) => {
                     TOTAL
                   </td>
                   <td className="text-end" style={{ width: "100px" }}>
-                    {props.currency} {props.total}
+                  {current === "INR" ? (
+                      <div>
+                        {newCurrencySymbol(current)}
+                        {props.total || 0}
+                      </div>
+                    ) : (
+                      <div>
+                        {newCurrencySymbol(current)}
+                        {convertPrice(props.total || 0, current, rates)}
+                      </div>
+                    )}
                   </td>
                 </tr>
               </tbody>

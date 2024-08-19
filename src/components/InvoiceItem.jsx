@@ -4,22 +4,16 @@ import Table from "react-bootstrap/Table";
 import Button from "react-bootstrap/Button";
 import { BiTrash } from "react-icons/bi";
 import EditableField from "./EditableField";
+import { selectProductsList } from "../redux/productSlice";
+import { useSelector } from "react-redux";
+import { newCurrencySymbol } from "../utils/newCurrencySymbol";
 
 const InvoiceItem = (props) => {
   const { onItemizedItemEdit, currency, onRowDel, items, onRowAdd } = props;
+  const { current, rates } = useCurrencyExchangeRates();
 
-  const itemTable = items.map((item) => (
-    <ItemRow
-      key={item.id}
-      item={item}
-      onDelEvent={onRowDel}
-      onItemizedItemEdit={onItemizedItemEdit}
-      currency={currency}
-    />
-  ));
-
-  return (
-    <div>
+  const itemTable = (
+    <>
       <Table>
         <thead>
           <tr>
@@ -29,8 +23,26 @@ const InvoiceItem = (props) => {
             <th className="text-center">ACTION</th>
           </tr>
         </thead>
-        <tbody>{itemTable}</tbody>
+        <tbody>
+          {items.map((item) => (
+            <ItemRow
+              key={item.id}
+              item={item}
+              rates={rates}
+              currentCurrency={current}
+              onDelEvent={onRowDel}
+              onItemizedItemEdit={onItemizedItemEdit}
+              currency={currency}
+            />
+          ))}
+        </tbody>
       </Table>
+    </>
+  );
+
+  return (
+    <div>
+      {items.length > 0 && itemTable} {/* Conditionally render the table */}
       <Button className="fw-bold" onClick={onRowAdd}>
         Add Item
       </Button>
@@ -40,8 +52,15 @@ const InvoiceItem = (props) => {
 
 const ItemRow = (props) => {
   const onDelEvent = () => {
-    props.onDelEvent(props.item);
+    props.onDelEvent(props.item.itemId);
   };
+
+  // Fetch using id from redux 
+  const globalItems = useSelector(selectProductsList)
+
+  const reqItem = globalItems.find((item) => 
+    item.itemId === props.item.itemId )
+
   return (
     <tr>
       <td style={{ width: "100%" }}>
@@ -53,7 +72,7 @@ const ItemRow = (props) => {
             type: "text",
             name: "itemName",
             placeholder: "Item name",
-            value: props.item.itemName,
+            value: reqItem.itemName,
             id: props.item.itemId,
           }}
         />
@@ -65,7 +84,7 @@ const ItemRow = (props) => {
             type: "text",
             name: "itemDescription",
             placeholder: "Item description",
-            value: props.item.itemDescription,
+            value: reqItem.itemDescription,
             id: props.item.itemId,
           }}
         />
@@ -80,7 +99,7 @@ const ItemRow = (props) => {
             name: "itemQuantity",
             min: 1,
             step: "1",
-            value: props.item.itemQuantity,
+            value: reqItem.itemQuantity,
             id: props.item.itemId,
           }}
         />
@@ -91,15 +110,16 @@ const ItemRow = (props) => {
             props.onItemizedItemEdit(evt, props.item.itemId)
           }
           cellData={{
-            leading: props.currency,
+            leading: newCurrencySymbol(props.currency),
             type: "number",
             name: "itemPrice",
             min: 1,
             step: "0.01",
             presicion: 2,
             textAlign: "text-end",
-            value: props.item.itemPrice,
+            value: reqItem.itemPrice,
             id: props.item.itemId,
+            disabled: props.currency === "INR" ? false : true,
           }}
         />
       </td>
